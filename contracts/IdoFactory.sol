@@ -6,8 +6,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IdoBase.sol";
 
 contract IDOFactory is Ownable {
-  event IDOCreated(bytes32 title, uint256 idoId, address creator);
-  uint256 counter = 0;
+  event IDOCreated(
+    bytes32 title,
+    address idoAddress,
+    uint256 idoId,
+    address creator
+  );
+  uint256 public counter = 0;
   struct IdoInfo {
     address tokenAddress;
     address[] whitelistedAddresses;
@@ -51,7 +56,7 @@ contract IDOFactory is Ownable {
       info_.softCapInWei,
       info_.maxInvestInWei,
       info_.minInvestInWei,
-      info_.openTime,
+      block.timestamp,
       info_.closeTime,
       info_.decimals
     );
@@ -65,17 +70,17 @@ contract IDOFactory is Ownable {
     base.addwhitelistedAddresses(info_.whitelistedAddresses);
   }
 
-  IdoInfo[] Idos;
+  IdoInfo[] public Idos;
 
   function createPresale(
     IdoInfo calldata info_,
     IdoStringInfo calldata stringInfo_
-  ) external payable {
+  ) external payable returns (address) {
     require(msg.value == devFee, "Incorrect Fee amount ");
     IERC20 token = IERC20(info_.tokenAddress);
     IDOBase base = new IDOBase(address(this), owner());
-    uint256 maxTokens = (info_.hardCapInWei * info_.decimals) /
-      info_.tokenPriceInWei;
+    uint256 maxTokens = ((info_.hardCapInWei / info_.tokenPriceInWei) *
+      10**info_.decimals);
     require(token.transferFrom(msg.sender, address(base), maxTokens));
     inititalizeIdo(base, maxTokens, info_.tokenPriceInWei, info_, stringInfo_);
     base.setIdoInfo(counter);
@@ -83,8 +88,9 @@ contract IDOFactory is Ownable {
     allIdos[counter].stringInfo = stringInfo_;
     allIdos[counter].creator = msg.sender;
     Idos.push(info_);
-    emit IDOCreated(stringInfo_.saleTitle, counter, msg.sender);
+    emit IDOCreated(stringInfo_.saleTitle, address(base), counter, msg.sender);
     counter++;
+    return address(base);
   }
 
   function checkIdoDetails(uint256 _id)

@@ -27,10 +27,13 @@ contract IDOBase is ReentrancyGuard {
   bytes32 public linkTwitter;
   bytes32 public linkDiscord;
   bytes32 public linkWebsite;
-  bool public active;
+  uint256 public reservedTokens;
+  bool public active = true;
   bool public ready;
   uint256 public idoId;
-
+  bool refundOpen;
+  bool approved;
+  address[] allInvestors;
   mapping(address => uint256) weiInvestments;
   mapping(address => bool) whitelistedAddresses;
   mapping(address => bool) claimed;
@@ -52,6 +55,11 @@ contract IDOBase is ReentrancyGuard {
     _;
   }
 
+  modifier onlyDev() {
+    require(msg.sender == teamAddress, "Not Dev");
+    _;
+  }
+
   modifier onlyFactory() {
     require(msg.sender == factoryAddress, "Not Factory");
     _;
@@ -69,6 +77,10 @@ contract IDOBase is ReentrancyGuard {
     _;
   }
 
+  modifier refundIsOpen() {
+    require(refundOpen, "IDO is not open for refund");
+    _;
+  }
   modifier isWhitelisted() {
     require(whitelistedAddresses[msg.sender], "Address not whitelisted");
     _;
@@ -101,6 +113,11 @@ contract IDOBase is ReentrancyGuard {
     require(_IdoCreator != address(0) && _tokenAddress != address(0));
     IDOCreator = payable(_IdoCreator);
     token = IERC20(_tokenAddress);
+  }
+
+  struct Investors {
+    address investor;
+    uint256 tokensToCollect;
   }
 
   function setGeneralInfo(
@@ -163,12 +180,24 @@ contract IDOBase is ReentrancyGuard {
     }
   }
 
+  function approveForTokenTransfer() public onlyDev {
+    approved = true;
+  }
+
   function getTokenAmount(uint256 _weiAmount)
     internal
     view
     returns (uint256 _tokens)
   {
     _tokens = (_weiAmount * (10**decimals)) / tokenPriceInWei;
+  }
+
+  function openForRefund() public onlyDev {
+    require(
+      totalCollectedWei < hardCapInWei,
+      "Hard cap reached,No need to refund"
+    );
+    refundOpen = true;
   }
 
   function invest() public payable nonReentrant isWhitelisted IdoActive {
@@ -189,13 +218,16 @@ contract IDOBase is ReentrancyGuard {
     );
     if (weiInvestments[msg.sender] == 0) {
       totalInvestors++;
+      allInvestors.push(msg.sender);
     }
+
+    totalCollectedWei += msg.value;
+    reservedTokens += getTokenAmount(msg.value);
+    weiInvestments[msg.sender] = totalInvestmentInWei;
+    tokensLeft -= getTokenAmount(msg.value);
     if (tokensLeft == 0) {
       ready = true;
     }
-    totalCollectedWei += msg.value;
-    weiInvestments[msg.sender] = totalInvestmentInWei;
-    tokensLeft -= getTokenAmount(msg.value);
   }
 
   receive() external payable {
@@ -226,6 +258,7 @@ contract IDOBase is ReentrancyGuard {
     external
     isWhitelisted
     investorOnly
+    refundIsOpen
     notClaimedOrRefunded
     nonReentrant
   {
@@ -240,19 +273,15 @@ contract IDOBase is ReentrancyGuard {
     uint256 investment = weiInvestments[msg.sender];
     uint256 IdoBalance = address(this).balance;
     require(IdoBalance > 0);
-    if (investment > IdoBalance) {
-      investment = IdoBalance;
-    }
     if (investment > 0) {
       payable(msg.sender).transfer(investment);
     }
   }
 
-  function cancelAndTransferTokensToIdoCreator() external {
-    if (teamAddress != msg.sender || ready) {
+  function cancelAndTransferTokensToIdoCreator() external IdoActive {
+    if (teamAddress != msg.sender) {
       revert("Cannot cancel, Insufficient Permissions or target reached");
     }
-    require(active);
     active = false;
 
     uint256 balance = token.balanceOf(address(this));
@@ -261,10 +290,29 @@ contract IDOBase is ReentrancyGuard {
     }
   }
 
-  function collectFundsRaised() external onlyIDOCreator readyForClaim {
-    require(active);
+  function collectFundsRaised()
+    external
+    onlyIDOCreator
+    IdoActive
+    readyForClaim
+  {
     if (address(this).balance > 0) {
       IDOCreator.transfer(address(this).balance);
+    }
+  }
+
+  function transferOutRemainingTokens() public onlyIDOCreator {
+    require(approved, "Seek approval from admin");
+    if (totalTokens - reservedTokens > 0) {
+      require(IERC20(token).transfer(msg.sender, totalTokens - reservedTokens));
+    }
+  }
+
+  function getInvestors() public view returns (Investors[] memory inv) {
+    inv = new Investors[](allInvestors.length);
+    for (uint256 i; i < allInvestors.length; i++) {
+      inv[i].investor = allInvestors[i];
+      inv[i].tokensToCollect = getTokenAmount(weiInvestments[allInvestors[i]]);
     }
   }
 }
