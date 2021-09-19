@@ -308,6 +308,28 @@ contract IDOBase is ReentrancyGuard {
     }
   }
 
+  function changeDeadline(uint256 _newDeadline)
+    public
+    onlyIDOCreator
+    IdoActive
+  {
+    require(
+      _newDeadline > block.timestamp,
+      "New Deadline must be greater than the current time"
+    );
+    closeTime = _newDeadline;
+  }
+
+  function changeSoftCap(uint256 _newSoftCap) public onlyIDOCreator IdoActive {
+    require(_newSoftCap > 0);
+    softCapInWei = _newSoftCap;
+  }
+
+  function changeHardCap(uint256 _newHardCap) public onlyIDOCreator IdoActive {
+    require(_newHardCap > 0);
+    hardCapInWei = _newHardCap;
+  }
+
   function getInvestors() public view returns (Investors[] memory inv) {
     inv = new Investors[](allInvestors.length);
     for (uint256 i; i < allInvestors.length; i++) {

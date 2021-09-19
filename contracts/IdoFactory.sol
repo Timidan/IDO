@@ -56,7 +56,7 @@ contract IDOFactory is Ownable {
       info_.softCapInWei,
       info_.maxInvestInWei,
       info_.minInvestInWei,
-      block.timestamp,
+      info_.openTime,
       info_.closeTime,
       info_.decimals
     );

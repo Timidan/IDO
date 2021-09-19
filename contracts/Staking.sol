@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CEStaking is ReentrancyGuard, Ownable {
   IERC20 public CEG;
   IERC20 public CE;
-  mapping(address => uint256) _dayStaked;
+  mapping(address => uint256) timeStaked;
   event Staked(address indexed staker, uint256 amount, uint256 timeStaked);
   event Withdrawal(address owner, uint256 amount);
   bool open;
@@ -16,9 +16,9 @@ contract CEStaking is ReentrancyGuard, Ownable {
     _;
   }
 
-  constructor(IERC20 _CEG, IERC20 _CE) {
-    CE = _CE;
-    CEG = _CEG;
+  constructor() {
+    CE = IERC20(0x8F12Dfc7981DE79A8A34070a732471f2D335EecE);
+    CEG = IERC20(0xB3C05650164b9746B9EBF1E09E3d79897C55128F);
     open = true;
   }
 
@@ -30,7 +30,7 @@ contract CEStaking is ReentrancyGuard, Ownable {
     );
     require(CE.transferFrom(msg.sender, address(this), _amountToStake));
     require(CEG.transfer(msg.sender, _amountToStake));
-    _dayStaked[msg.sender] = block.timestamp;
+    timeStaked[msg.sender] = block.timestamp;
 
     emit Staked(msg.sender, _amountToStake, block.timestamp);
   }
@@ -39,7 +39,7 @@ contract CEStaking is ReentrancyGuard, Ownable {
     require(_amountToWithdraw > 0, "Withdraw: Amount should be greater than 0");
 
     require(
-      ((block.timestamp - _dayStaked[msg.sender]) / 86400) >= 2,
+      ((block.timestamp - timeStaked[msg.sender]) / 86400) >= 2,
       "Must have staked for 2days or more"
     );
     require(
@@ -47,7 +47,7 @@ contract CEStaking is ReentrancyGuard, Ownable {
       "Stake: Allowance not enough"
     );
     require(CEG.transferFrom(msg.sender, address(this), _amountToWithdraw));
-    uint256 bonus = ((((block.timestamp - _dayStaked[msg.sender]) / 86400) *
+    uint256 bonus = ((((block.timestamp - timeStaked[msg.sender]) / 86400) *
       10**3) / 365) * _amountToWithdraw;
     uint256 total = _amountToWithdraw + (bonus / 10**3);
 
