@@ -47,7 +47,7 @@ async function main() {
 
   const Links = {
     saleTitle: ethers.utils.formatBytes32String("First Sale"),
-    linkTelegram: ethers.utils.formatBytes32String("Firsteee Sale"),
+    linkTelegram: ethers.utils.formatBytes32String("First Sale"),
     linkDiscord: ethers.utils.formatBytes32String("First Sale"),
     linkTwitter: ethers.utils.formatBytes32String("First Sale"),
     linkWebsite: ethers.utils.formatBytes32String("First Sale"),
