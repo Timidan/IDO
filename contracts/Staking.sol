@@ -7,6 +7,7 @@ contract CEStaking is ReentrancyGuard, Ownable {
   IERC20 public CEG;
   IERC20 public CE;
   mapping(address => uint256) timeStaked;
+  mapping(address => uint256) amountStaked;
   event Staked(address indexed staker, uint256 amount, uint256 timeStaked);
   event Withdrawal(address owner, uint256 amount);
   bool open;
@@ -16,9 +17,9 @@ contract CEStaking is ReentrancyGuard, Ownable {
     _;
   }
 
-  constructor() {
-    CE = IERC20(0x8F12Dfc7981DE79A8A34070a732471f2D335EecE);
-    CEG = IERC20(0xB3C05650164b9746B9EBF1E09E3d79897C55128F);
+  constructor(address _CE, address _CEG) {
+    CE = IERC20(_CE);
+    CEG = IERC20(_CEG);
     open = true;
   }
 
@@ -31,7 +32,7 @@ contract CEStaking is ReentrancyGuard, Ownable {
     require(CE.transferFrom(msg.sender, address(this), _amountToStake));
     require(CEG.transfer(msg.sender, _amountToStake));
     timeStaked[msg.sender] = block.timestamp;
-
+    amountStaked[msg.sender] += _amountToStake;
     emit Staked(msg.sender, _amountToStake, block.timestamp);
   }
 
@@ -47,13 +48,26 @@ contract CEStaking is ReentrancyGuard, Ownable {
       "Stake: Allowance not enough"
     );
     require(CEG.transferFrom(msg.sender, address(this), _amountToWithdraw));
+    //underflow handled with 2day minimum staking
     uint256 bonus = ((((block.timestamp - timeStaked[msg.sender]) / 86400) *
       10**3) / 365) * _amountToWithdraw;
     uint256 total = _amountToWithdraw + (bonus / 10**3);
-
+    timeStaked[msg.sender] = 0;
     require(CE.balanceOf(address(this)) > total, "Contract not Funded");
     require(CE.transfer(msg.sender, total));
+
+    amountStaked[msg.sender] -= _amountToWithdraw;
     emit Withdrawal(msg.sender, total);
+  }
+
+  function checkCurrentRewards() public view returns (uint256 rewards_) {
+    rewards_ =
+      ((((block.timestamp - timeStaked[msg.sender]) / 86400) * 10**3) / 365) *
+      amountStaked[msg.sender];
+  }
+
+  function checkStake() public view returns (uint256 stake_) {
+    stake_ = amountStaked[msg.sender];
   }
 
   function freezeStaking() public onlyOwner {

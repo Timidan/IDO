@@ -23,7 +23,7 @@ async function main() {
   CEG = await CEG.deploy();
   await CE.deployed();
   await CEG.deployed();
-  const staking = await Staking.deploy(CEG.address, CE.address);
+  const staking = await Staking.deploy(CE.address, CEG.address);
   await staking.deployed();
 
   [owner, signer1, signer2, signer3, signer4] = await ethers.getSigners();
@@ -32,12 +32,13 @@ async function main() {
   console.log("CE deployed to:", CE.address);
   console.log("CEG deployed to:", CEG.address);
 
-  await CEG.transfer(staking.address, "1000000000000000000000000");
+  await CEG.transfer(staking.address, "10000000000000000000000");
   await CE.transfer(staking.address, "10000000000000000000000");
   await CE.approve(staking.address, "10000000000000000000000");
   await CEG.approve(staking.address, "10000000000000000000000000");
   await staking.stake("1000000000000000000000");
-  await network.provider.send("evm_increaseTime", [1209600]);
+  console.log("my money", await staking.checkCurrentRewards());
+  //await network.provider.send("evm_increaseTime", [12096000]);
   await staking.withdraw("1000000000000000000000");
 }
 
