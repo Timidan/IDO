@@ -7,7 +7,7 @@ import "./IdoBase.sol";
 
 contract IDOFactory is Ownable {
   event IDOCreated(
-    bytes32 title,
+    string title,
     address idoAddress,
     uint256 idoId,
     address creator
@@ -23,30 +23,20 @@ contract IDOFactory is Ownable {
     uint256 minInvestInWei;
     uint256 openTime;
     uint256 closeTime;
-    uint8 decimals;
-  }
-  struct IdoStringInfo {
-    bytes32 saleTitle;
-    bytes32 linkTelegram;
-    bytes32 linkDiscord;
-    bytes32 linkTwitter;
-    bytes32 linkWebsite;
   }
 
-  struct IDOMAster {
+  struct IDOMaster {
     IdoInfo info;
-    IdoStringInfo stringInfo;
     address creator;
   }
-  mapping(uint256 => IDOMAster) public allIdos;
+  mapping(uint256 => IDOMaster) public allIdos;
   uint256 devFee = 10000000000000000; //0.01ether
 
   function inititalizeIdo(
     IDOBase base,
     uint256 _totalTokens,
     uint256 _tokenPriceInWei,
-    IdoInfo calldata info_,
-    IdoStringInfo calldata stringInfo_
+    IdoInfo calldata info_
   ) internal {
     base.setAddresses(msg.sender, info_.tokenAddress);
     base.setGeneralInfo(
@@ -57,38 +47,38 @@ contract IDOFactory is Ownable {
       info_.maxInvestInWei,
       info_.minInvestInWei,
       info_.openTime,
-      info_.closeTime,
-      info_.decimals
-    );
-    base.setStringInfo(
-      stringInfo_.saleTitle,
-      stringInfo_.linkTelegram,
-      stringInfo_.linkDiscord,
-      stringInfo_.linkTwitter,
-      stringInfo_.linkWebsite
+      info_.closeTime
     );
     base.addwhitelistedAddresses(info_.whitelistedAddresses);
   }
 
   IdoInfo[] public Idos;
 
-  function createPresale(
-    IdoInfo calldata info_,
-    IdoStringInfo calldata stringInfo_
-  ) external payable returns (address) {
+  function createPresale(IdoInfo calldata info_)
+    external
+    payable
+    returns (address)
+  {
     require(msg.value == devFee, "Incorrect Fee amount ");
     IERC20 token = IERC20(info_.tokenAddress);
+
+    uint8 decimal = token.decimals();
+    string memory title = token.name();
     IDOBase base = new IDOBase(address(this), owner());
     uint256 maxTokens = ((info_.hardCapInWei / info_.tokenPriceInWei) *
-      10**info_.decimals);
+      10**decimal);
+    require(
+      token.allowance(msg.sender, address(this)) >= maxTokens,
+      "Allowance not enough,Approve the IDOFactory first"
+    );
     require(token.transferFrom(msg.sender, address(base), maxTokens));
-    inititalizeIdo(base, maxTokens, info_.tokenPriceInWei, info_, stringInfo_);
+    inititalizeIdo(base, maxTokens, info_.tokenPriceInWei, info_);
     base.setIdoInfo(counter);
     allIdos[counter].info = info_;
-    allIdos[counter].stringInfo = stringInfo_;
+
     allIdos[counter].creator = msg.sender;
     Idos.push(info_);
-    emit IDOCreated(stringInfo_.saleTitle, address(base), counter, msg.sender);
+    emit IDOCreated(title, address(base), counter, msg.sender);
     counter++;
     return address(base);
   }
@@ -96,7 +86,7 @@ contract IDOFactory is Ownable {
   function checkIdoDetails(uint256 _id)
     public
     view
-    returns (IDOMAster memory master_)
+    returns (IDOMaster memory master_)
   {
     master_ = allIdos[_id];
   }

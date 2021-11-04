@@ -19,15 +19,9 @@ contract IDOBase is ReentrancyGuard {
   uint256 public tokensLeft;
   uint256 public openTime;
   uint256 public closeTime;
-  uint256 public listingPriceInWei;
   uint256 public hardCapInWei; // maximum wei amount that can be invested in presale
-  uint256 public softCapInWei; // minimum wei amount to invest in presale, if not met, invested wei will be returned
-  bytes32 public saleTitle;
-  bytes32 public linkTelegram;
-  bytes32 public linkTwitter;
-  bytes32 public linkDiscord;
-  bytes32 public linkWebsite;
-  uint256 public reservedTokens;
+  uint256 public softCapInWei;
+  uint256 public reservedTokens; // minimum wei amount to invest in presale, if not met, invested wei will be returned
   bool public active = true;
   bool public ready;
   uint256 public idoId;
@@ -128,8 +122,7 @@ contract IDOBase is ReentrancyGuard {
     uint256 _maxInvestInWei,
     uint256 _minInvestInWei,
     uint256 _openTime,
-    uint256 _closeTime,
-    uint8 _decimals
+    uint256 _closeTime
   ) external onlyFactory {
     require(_totalTokens > 0);
     require(_tokenPriceInWei > 0);
@@ -149,21 +142,6 @@ contract IDOBase is ReentrancyGuard {
     minInvestInWei = _minInvestInWei;
     openTime = _openTime;
     closeTime = _closeTime;
-    decimals = _decimals;
-  }
-
-  function setStringInfo(
-    bytes32 _saleTitle,
-    bytes32 _linkTelegram,
-    bytes32 _linkDiscord,
-    bytes32 _linkTwitter,
-    bytes32 _linkWebsite
-  ) external onlyIDOCreatorOrFactory {
-    saleTitle = _saleTitle;
-    linkTelegram = _linkTelegram;
-    linkDiscord = _linkDiscord;
-    linkTwitter = _linkTwitter;
-    linkWebsite = _linkWebsite;
   }
 
   function setIdoInfo(uint256 _idoId) external onlyFactory {
@@ -198,6 +176,16 @@ contract IDOBase is ReentrancyGuard {
       "Hard cap reached,No need to refund"
     );
     refundOpen = true;
+  }
+
+  function checkInvestment(address _investor)
+    public
+    view
+    isWhitelisted
+    IdoActive
+    returns (uint256 noOfTokens_)
+  {
+    noOfTokens_ = getTokenAmount(weiInvestments[_investor]);
   }
 
   function invest() public payable nonReentrant isWhitelisted IdoActive {

@@ -36,30 +36,7 @@ async function main() {
   await CE.transfer(staking.address, "10000000000000000000000");
   await CE.approve(staking.address, "10000000000000000000000000000000");
   await CEG.approve(staking.address, "100000000000000000000000000000000");
-  await CEG.connect(signer1).approve(
-    staking.address,
-    "100000000000000000000000000000000"
-  );
-  await CE.connect(signer1).approve(
-    staking.address,
-    "100000000000000000000000000000000"
-  );
   await staking.stake("1000000000000000000000");
-  await CE.transfer(signer1.address, "1000000000000");
-  await staking.connect(signer1).stake("1000000000000");
-
-  await network.provider.send("evm_increaseTime", [12096000]);
-  console.log("my money", await staking.checkCurrentRewards(owner.address));
-  console.log(
-    "the other guy's money",
-    await staking.connect(signer1).checkCurrentRewards(signer1.address)
-  );
-  console.log("current stake is", await staking.checkStake());
-  console.log(await staking.connect(signer1).checkStake());
-  await staking.withdraw("10000000000000000000");
-  await staking.connect(signer1).withdraw("1000000000000");
-  const bal = await CE.balanceOf(signer1.address);
-  console.log("balance is", bal.toString());
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -44,7 +44,7 @@ contract CEStaking is ReentrancyGuard, Ownable {
       "Must have staked for 2days or more"
     );
     require(
-      CE.allowance(msg.sender, address(this)) > _amountToWithdraw,
+      CEG.allowance(msg.sender, address(this)) > _amountToWithdraw,
       "Stake: Allowance not enough"
     );
     require(CEG.transferFrom(msg.sender, address(this), _amountToWithdraw));
@@ -60,10 +60,14 @@ contract CEStaking is ReentrancyGuard, Ownable {
     emit Withdrawal(msg.sender, total);
   }
 
-  function checkCurrentRewards() public view returns (uint256 rewards_) {
+  function checkCurrentRewards(address _user)
+    public
+    view
+    returns (uint256 rewards_)
+  {
     rewards_ =
-      ((((block.timestamp - timeStaked[msg.sender]) / 86400) * 10**3) / 365) *
-      amountStaked[msg.sender];
+      ((((block.timestamp - timeStaked[_user]) / 86400) * 10**3) / 365) *
+      amountStaked[_user];
   }
 
   function checkStake() public view returns (uint256 stake_) {
